@@ -32,6 +32,8 @@ io.on("connection", function(socket){
     socket.broadcast.emit("USER_CONNECTED", currentUser);
   });
 
+
+  //PlayerBarMove 메시지 리시브.
   socket.on("MOVE", function(data){
    currentUser = {
      name: data.name,
@@ -39,7 +41,7 @@ io.on("connection", function(socket){
    }
    socket.emit("MOVE", currentUser);
    socket.broadcast.emit("MOVE", currentUser);
-    console.log(currentUser.name + " move to "+ currentUser.position);
+    console.log( currentUser.name + " move to "+ currentUser.position );
   });
 
   socket.on("disconnect", function(){
