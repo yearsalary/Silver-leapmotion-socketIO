@@ -53,8 +53,9 @@ io.on("connection", function(socket){
       position: data.position
     }
 
-    //socket.broadcast.emit("BALL_MOVE", currentUser);
-     console.log(" BALL_MOVE to "+ ball.position );
+    //BallOwner 자신을 제외한 유저에게 브로드 캐스팅.
+    socket.broadcast.emit("BALL_MOVE", ball);
+    //console.log(" BALL_MOVE to "+ ball.position );
   });
 
 
