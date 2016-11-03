@@ -10,6 +10,7 @@ var clients = [];
 
 io.on("connection", function(socket){
   var currentUser;
+  var ballOwner;
 
   socket.on("USER_CONNECT", function(){
     console.log("User connected");
@@ -41,9 +42,35 @@ io.on("connection", function(socket){
    }
    socket.emit("MOVE", currentUser);
    socket.broadcast.emit("MOVE", currentUser);
-    console.log( currentUser.name + " move to "+ currentUser.position );
+    //console.log( currentUser.name + " move to "+ currentUser.position );
   });
 
+
+  //BALL_MOVE메시지 리시브.
+  socket.on("BALL_MOVE", function(data){
+    ball = {
+      name: data.name,
+      position: data.position
+    }
+
+    //socket.broadcast.emit("BALL_MOVE", currentUser);
+     console.log(" BALL_MOVE to "+ ball.position );
+  });
+
+
+  socket.on("BALL_COLLISON", function(data){
+    ballOwner = {
+       name : data.name
+    }
+
+    socket.emit("BALL_COLLISON", ballOwner);
+    socket.broadcast.emit("BALL_COLLISON", ballOwner);
+     console.log("ballOwner"+ballOwner.name);
+  });
+
+
+
+  //User disconnect
   socket.on("disconnect", function(){
     socket.broadcast.emit("USER_DISCONNECTED", currentUser);
     for( var i = 0; i < clients.length; i++) {
