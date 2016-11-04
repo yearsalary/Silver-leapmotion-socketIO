@@ -49,13 +49,13 @@ io.on("connection", function(socket){
   //BALL_MOVE메시지 리시브.
   socket.on("BALL_MOVE", function(data){
     ball = {
-      name: data.name,
+      moveDirection: data.moveDirection,
       position: data.position
     }
 
     //BallOwner 자신을 제외한 유저에게 브로드 캐스팅.
     socket.broadcast.emit("BALL_MOVE", ball);
-    //console.log(" BALL_MOVE to "+ ball.position );
+    console.log(" BALL_MOVE to "+ ball.position );
   });
 
 
