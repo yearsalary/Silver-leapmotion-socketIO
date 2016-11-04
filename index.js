@@ -16,7 +16,7 @@ io.on("connection", function(socket){
     console.log("User connected");
     for( var i = 0; i < clients.length; i++) {
       socket.emit("USER_CONNECTED", {name:clients[i].name, position:clients[i].position});
-      console.log("User name"+clients[i].name+ "is connected");
+      console.log("User name "+clients[i].name+ "is connected");
     }
   });
 
@@ -59,13 +59,13 @@ io.on("connection", function(socket){
   });
 
 
-  socket.on("BALL_COLLISON", function(data){
+  socket.on("BALL_OWNER_CHANGE", function(data){
     ballOwner = {
        name : data.name
     }
 
-    socket.emit("BALL_COLLISON", ballOwner);
-    socket.broadcast.emit("BALL_COLLISON", ballOwner);
+    //socket.emit("BALL_COLLISON", ballOwner);
+    socket.broadcast.emit("BALL_OWNER_CHANGE", ballOwner);
      console.log("ballOwner"+ballOwner.name);
   });
 
