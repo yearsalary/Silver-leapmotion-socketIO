@@ -7,22 +7,130 @@ var io = require('socket.io').listen(server);
 app.set('port', process.env.Port || 3000);
 
 var clients = [];
+var rooms = [{title:'testRoom',master:'user1',attendants:['user1']}, {title:'testRoom2',master:'user2',attendants:['user2']}];
 
 io.on("connection", function(socket){
   var currentUser;
-  var ballOwner;
 
-  socket.on("USER_CONNECT", function(){
-    console.log("User connected");
-    for( var i = 0; i < clients.length; i++) {
-      socket.emit("USER_CONNECTED", {name:clients[i].name, position:clients[i].position});
-      console.log("User name "+clients[i].name+ "is connected");
-    }
+  socket.on("USER_CONNECT", function(data){
+      console.log("User connected");
+      currentUser = {
+        name: data.name,
+      }
+
+      clients.push(currentUser);
+
+      currentServerInfo = {
+          clientsLength: clients.length,
+          rooms: rooms
+      }
+
+      socket.emit("USER_CONNECTED",{currentUser:currentUser, currentServerInfo:currentServerInfo});
+      socket.broadcast.emit("USER_CONNECTED", {currentUser:currentUser, currentServerInfo:currentServerInfo});
+      for(var i = 0; i<clients.length; i++)
+        console.log("User name "+clients[i].name+ " is connected");
   });
 
-  socket.on("PLAY", function (data){
-    console.log(data);
+  socket.on("CREATE_ROOM", function(data){
 
+    roomInfo = {
+      title: data.title,
+      master: data.master,
+      attendants: [data.master]
+    }
+
+    rooms.push(roomInfo);
+
+    currentServerInfo = {
+        clientsLength: clients.length,
+        rooms: rooms
+    }
+
+    socket.join(roomInfo.title);
+    socket.emit("CREATED_ROOM", {currentServerInfo:currentServerInfo, roomInfo:roomInfo});
+    socket.broadcast.emit("CREATED_ROOM", {currentServerInfo:currentServerInfo, roomInfo:roomInfo});
+    console.log(roomInfo.title +"room is created");
+  });
+
+  socket.on("JOIN_ROOM", function(data){
+
+    roomInfo = {
+      title:'',
+      master:'',
+      attendants: []
+    }
+
+    roomInfo = rooms.find((room)=>{
+      return room.title == data.title
+    });
+
+    roomInfo.attendants.push(data.attendant);
+
+    socket.join(roomInfo.title);
+    socket.emit("JOINED_ROOM", roomInfo);
+    io.to(roomInfo.title).emit("JOINED_ROOM", roomInfo);
+
+  });
+
+  socket.on("LEAVE_ROOM", function(data){
+
+    roomInfo = {
+      title:'',
+      master:'',
+      attendants: []
+    }
+
+    roomInfo = rooms.find((room)=>{
+      return room.title == data.title;
+    });
+
+    //room is destryed;
+    if(roomInfo == null) {
+      currentServerInfo = {
+          clientsLength: clients.length,
+          rooms: rooms
+      }
+      console.log("BBBBBBBBBB");
+      socket.leave(data.title);
+      socket.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo,roomInfo:roomInfo});
+      socket.broadcast.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo,roomInfo:roomInfo});
+      return;
+    }
+
+    // master left room
+    if(roomInfo.master == data.attendant) {
+      for(var i=0; i<rooms.length; i++) {
+        if(rooms[i].title == roomInfo.title) {
+          console.log(roomInfo.title+" room is destroy");
+          rooms.splice(i,1);
+        }
+      }
+
+      io.to(roomInfo.title).emit("DESTROY_ROOM",roomInfo);
+    }
+    //attendant left room
+    for(var i=0; i<roomInfo.attendants.length; i++) {
+      if(roomInfo.attendants[i] == data.attendant) {
+        console.log("User "+roomInfo.attendants[i]+" left "+roomInfo.title);
+        roomInfo.attendants.splice(i,1);
+      }
+    }
+
+
+    currentServerInfo = {
+        clientsLength: clients.length,
+        rooms: rooms
+    }
+
+    console.log("AAAAAAAAAA");
+    socket.leave(roomInfo.title);
+    socket.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
+    io.to(roomInfo.title).emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
+
+  });
+
+
+  socket.on("PLAY", function (data){
     currentUser = {
       name: data.name,
       position: data.position
@@ -69,17 +177,22 @@ io.on("connection", function(socket){
      console.log("ballOwner"+ballOwner.name);
   });
 
-
-
   //User disconnect
   socket.on("disconnect", function(){
-    socket.broadcast.emit("USER_DISCONNECTED", currentUser);
     for( var i = 0; i < clients.length; i++) {
       if(clients[i].name == currentUser.name) {
         console.log("User "+clients[i].name+" disconnected");
         clients.splice(i,1);
       }
     }
+
+    currentServerInfo = {
+        clientsLength: clients.length,
+        rooms: rooms
+    }
+
+    socket.broadcast.emit("USER_DISCONNECTED", currentServerInfo);
+
   });
 
 });
