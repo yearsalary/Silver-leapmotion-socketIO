@@ -7,7 +7,7 @@ var io = require('socket.io').listen(server);
 app.set('port', process.env.Port || 3000);
 
 var clients = [];
-var rooms = [{title:'testRoom',master:'user1',attendants:['user1']}, {title:'testRoom2',master:'user2',attendants:['user2']}];
+var rooms = [{title:'testRoom',master:'user1',attendants:[{name:'user1', ready:false}]}, {title:'testRoom2',master:'user2',attendants:[{name:'user2',ready:false}]}];
 
 io.on("connection", function(socket){
   var currentUser;
@@ -36,7 +36,7 @@ io.on("connection", function(socket){
     roomInfo = {
       title: data.title,
       master: data.master,
-      attendants: [data.master]
+      attendants: [{name:data.master, ready:false}]
     }
 
     rooms.push(roomInfo);
@@ -64,7 +64,12 @@ io.on("connection", function(socket){
       return room.title == data.title
     });
 
-    roomInfo.attendants.push(data.attendant);
+    attendant = {
+      name:data.attendant,
+      ready:false
+    }
+
+    roomInfo.attendants.push(attendant);
 
     socket.join(roomInfo.title);
     socket.emit("JOINED_ROOM", roomInfo);
@@ -110,8 +115,8 @@ io.on("connection", function(socket){
     }
     //attendant left room
     for(var i=0; i<roomInfo.attendants.length; i++) {
-      if(roomInfo.attendants[i] == data.attendant) {
-        console.log("User "+roomInfo.attendants[i]+" left "+roomInfo.title);
+      if(roomInfo.attendants[i].name == data.attendant) {
+        console.log("User "+roomInfo.attendants[i].name+" left "+roomInfo.title);
         roomInfo.attendants.splice(i,1);
       }
     }
@@ -190,14 +195,14 @@ io.on("connection", function(socket){
     //rooms의 attendants 목록에 있는 경우에 제거...
     for(var i = 0; i<rooms.length; i++) {
       var attendant = rooms[i].attendants.find((attendant)=>{
-        return attendant == currentUser.name;
+        return attendant.name == currentUser.name;
       });
       if(attendant !=null) {
         socket.leave(rooms[i].title);
         // attendants 에서 제거..
         for(var j=0; j<rooms[i].attendants.length; j++) {
-          if(rooms[i].attendants[j] == attendant) {
-            console.log("User "+rooms[i].attendants[j]+" left "+rooms[i].title);
+          if(rooms[i].attendants[j].name == attendant.name) {
+            console.log("User "+rooms[i].attendants[j].name+" left "+rooms[i].title);
             rooms[i].attendants.splice(j,1);
           }
         }
