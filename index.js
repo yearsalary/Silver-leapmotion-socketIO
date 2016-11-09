@@ -179,12 +179,54 @@ io.on("connection", function(socket){
 
   //User disconnect
   socket.on("disconnect", function(){
+    //클라이언트 array 제거..
     for( var i = 0; i < clients.length; i++) {
       if(clients[i].name == currentUser.name) {
         console.log("User "+clients[i].name+" disconnected");
         clients.splice(i,1);
       }
     }
+
+    //rooms의 attendants 목록에 있는 경우에 제거...
+    for(var i = 0; i<rooms.length; i++) {
+      var attendant = rooms[i].attendants.find((attendant)=>{
+        return attendant == currentUser.name;
+      });
+      if(attendant !=null) {
+        socket.leave(rooms[i].title);
+        // attendants 에서 제거..
+        for(var j=0; j<rooms[i].attendants.length; j++) {
+          if(rooms[i].attendants[j] == attendant) {
+            console.log("User "+rooms[i].attendants[j]+" left "+rooms[i].title);
+            rooms[i].attendants.splice(j,1);
+          }
+        }
+
+        currentServerInfo = {
+            clientsLength: clients.length,
+            rooms: rooms
+        }
+
+        socket.broadcast.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo,roomInfo:roomInfo});
+        break;
+      }
+    }
+
+    //rooms의 master 였던 경우...
+    var room = rooms.find((room)=>{
+      return room.master == currentUser.name;
+    });
+    if(room != null) {
+      //rooms 에서 제거..
+      for(var i=0; i<rooms.length; i++) {
+        if(rooms[i].title == room.title) {
+          console.log(room.title+" room is destroy");
+          rooms.splice(i,1);
+        }
+      }
+      io.to(room.title).emit("DESTROY_ROOM",room);
+    }
+
 
     currentServerInfo = {
         clientsLength: clients.length,
