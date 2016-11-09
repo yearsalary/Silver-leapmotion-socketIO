@@ -125,7 +125,7 @@ io.on("connection", function(socket){
     console.log("AAAAAAAAAA");
     socket.leave(roomInfo.title);
     socket.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
-    io.to(roomInfo.title).emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
+    socket.broadcast.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
 
   });
 
