@@ -7,7 +7,7 @@ var io = require('socket.io').listen(server);
 app.set('port', process.env.Port || 3000);
 
 var clients = [];
-var rooms = [{title:'testRoom',master:'user1',attendants:[{name:'user1', ready:false}]}, {title:'testRoom2',master:'user2',attendants:[{name:'user2',ready:false}]}];
+var rooms = [{title:'testRoom',master:'user1',attendants:[{name:'user1', ready:true}]}, {title:'testRoom2',master:'user2',attendants:[{name:'user2',ready:false}]}];
 
 io.on("connection", function(socket){
   var currentUser;
@@ -95,7 +95,7 @@ io.on("connection", function(socket){
           clientsLength: clients.length,
           rooms: rooms
       }
-      console.log("BBBBBBBBBB");
+
       socket.leave(data.title);
       socket.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo,roomInfo:roomInfo});
       socket.broadcast.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo,roomInfo:roomInfo});
@@ -121,30 +121,74 @@ io.on("connection", function(socket){
       }
     }
 
-
     currentServerInfo = {
         clientsLength: clients.length,
         rooms: rooms
     }
 
-    console.log("AAAAAAAAAA");
     socket.leave(roomInfo.title);
     socket.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
     socket.broadcast.emit("LEFT_ROOM",{currentServerInfo:currentServerInfo, roomInfo:roomInfo });
 
   });
 
+  //유저 플레이 레디 이벤트...
+  socket.on("PLAY_READY",function(data){
+      var readyCount = 0;
+      var room = rooms.find((v)=>{
+        return v.title == data.title;
+      });
 
-  socket.on("PLAY", function (data){
-    currentUser = {
-      name: data.name,
-      position: data.position
+      var attendant = room.attendants.find((v)=>{
+        return v.name == data.attendant;
+      });
+
+      attendant.ready = true;
+      io.to(room.title).emit("READY_CHANGE", room);
+
+      //플레이어 레디 확인...
+
+      for (var i = 0; i < room.attendants.length; i++) {
+          if(room.attendants[i].ready) {
+            readyCount++;
+          }
+      }
+
+      // 플레이어 최대수가 레디 상태...
+      if(readyCount>=2) {
+        console.log("Play "+ readyCount);
+        io.to(room.title).emit("PLAY", room);
+      }
+
+
+  });
+
+  socket.on("PLAY_READY_CANCEL",function(data){
+    var room = rooms.find((v)=>{
+      return v.title == data.title;
+    });
+
+    var attendant = room.attendants.find((v)=>{
+      return v.name == data.attendant;
+    });
+
+    attendant.ready = false;
+    io.to(room.title).emit("READY_CHANGE", room);
+  })
+
+  socket.on("PLAY_END",function(data){
+
+    var room = rooms.find((v)=>{
+      return v.title == data.title;
+    });
+
+    for(var i = 0; i<room.attendants.length; i++)  {
+      room.attendants[i].ready = false;
     }
 
-    clients.push(currentUser);
-    socket.emit("PLAY", currentUser);
-    socket.broadcast.emit("USER_CONNECTED", currentUser);
-  });
+    attendant.ready = false;
+    io.to(data.title).emit("PLAY_ENDED", room);
+  })
 
 
   //PlayerBarMove 메시지 리시브.
@@ -153,8 +197,9 @@ io.on("connection", function(socket){
      name: data.name,
      position: data.position
    }
-   socket.emit("MOVE", currentUser);
-   socket.broadcast.emit("MOVE", currentUser);
+
+   //socket.emit("MOVE", currentUser);
+   io.to(data.title).emit("MOVE", currentUser);
     //console.log( currentUser.name + " move to "+ currentUser.position );
   });
 
@@ -167,8 +212,8 @@ io.on("connection", function(socket){
     }
 
     //BallOwner 자신을 제외한 유저에게 브로드 캐스팅.
-    socket.broadcast.emit("BALL_MOVE", ball);
-    console.log(" BALL_MOVE to "+ ball.position );
+    io.to(data.title).emit("BALL_MOVE", ball);
+    //console.log(" BALL_MOVE to "+ ball.position );
   });
 
 
@@ -178,8 +223,26 @@ io.on("connection", function(socket){
     }
 
     //socket.emit("BALL_COLLISON", ballOwner);
-    socket.broadcast.emit("BALL_OWNER_CHANGE", ballOwner);
-     console.log("ballOwner"+ballOwner.name);
+    io.to(data.title).emit("BALL_OWNER_CHANGE", ballOwner);
+    console.log("ballOwner"+ballOwner.name);
+  });
+
+  socket.on("PLAY_TIME_CHANGE", function(data){
+    var time = {
+      time:data.time
+    }
+    //socket.emit("BALL_COLLISON", ballOwner);
+    io.to(data.title).emit("PLAY_TIME_CHANGED", time);
+  //  console.log("PlayTime:"+ data.time);
+  });
+
+  socket.on("PLAY_POINT_CHANGE", function(data){
+    var pointInfo = {
+      name:data.name
+    }
+    //socket.emit("BALL_COLLISON", ballOwner);
+    io.to(data.title).emit("PLAY_POINT_CHANGED", pointInfo);
+    console.log("goall:"+ data.name);
   });
 
   //User disconnect
